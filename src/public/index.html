@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Intent Router — AI-Powered Prompt Classification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"><\/script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-base: #06080f; --bg-surface: #0c1021; --bg-elevated: #131a2e;
+      --bg-card: rgba(19, 26, 46, 0.7); --bg-hover: #1a2440; --bg-input: #0e1528;
+      --border: rgba(99, 102, 241, 0.08); --border-strong: rgba(99, 102, 241, 0.18);
+      --border-glow: rgba(99, 102, 241, 0.35);
+      --text-primary: #e8ecf4; --text-secondary: #8295b8; --text-muted: #4a5f82;
+      --text-bright: #ffffff;
+      --accent: #6366f1; --accent-hover: #5558e6; --accent-glow: rgba(99, 102, 241, 0.20);
+      --accent-2: #8b5cf6; --accent-3: #06b6d4;
+      --code-bg: #080c18; --radius: 16px; --radius-sm: 10px; --radius-xs: 6px;
+      --glass: rgba(12, 16, 33, 0.65); --glass-border: rgba(99, 102, 241, 0.12);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(99,102,241,0.06);
+      --intent-code: #22d37e; --intent-code-bg: rgba(34,211,126,0.08); --intent-code-glow: rgba(34,211,126,0.25);
+      --intent-data: #3b8df6; --intent-data-bg: rgba(59,141,246,0.08); --intent-data-glow: rgba(59,141,246,0.25);
+      --intent-writing: #f5a623; --intent-writing-bg: rgba(245,166,35,0.08); --intent-writing-glow: rgba(245,166,35,0.25);
+      --intent-career: #a855f7; --intent-career-bg: rgba(168,85,247,0.08); --intent-career-glow: rgba(168,85,247,0.25);
+      --intent-unclear: #64748b; --intent-unclear-bg: rgba(100,116,139,0.08); --intent-unclear-glow: rgba(100,116,139,0.25);
+    }
+
+    html, body {
+      height: 100%; overflow: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-base); color: var(--text-primary);
+      display: flex; flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ANIMATED BACKGROUND */
+    .bg-animation {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    }
+    .bg-orb {
+      position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.12;
+      animation: orbFloat 20s ease-in-out infinite;
+    }
+    .bg-orb:nth-child(1) { width: 500px; height: 500px; background: #6366f1; top: -10%; left: -5%; animation-duration: 25s; }
+    .bg-orb:nth-child(2) { width: 400px; height: 400px; background: #8b5cf6; bottom: -15%; right: -5%; animation-duration: 30s; animation-delay: -5s; }
+    .bg-orb:nth-child(3) { width: 300px; height: 300px; background: #06b6d4; top: 40%; left: 50%; animation-duration: 22s; animation-delay: -10s; }
+    @keyframes orbFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -40px) scale(1.05); }
+      66% { transform: translate(-20px, 20px) scale(0.95); }
+    }
+
+    .grid-overlay {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* HEADER */
+    header {
+      position: relative; z-index: 10; flex-shrink: 0;
+      background: var(--glass); backdrop-filter: blur(20px) saturate(1.5);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 0 1.5rem; height: 60px;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; }
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; box-shadow: 0 0 20px rgba(99,102,241,0.5), 0 0 40px rgba(99,102,241,0.2);
+      animation: logoPulse 3s ease-in-out infinite;
+    }
+    @keyframes logoPulse { 0%,100%{box-shadow:0 0 20px rgba(99,102,241,0.5)}50%{box-shadow:0 0 28px rgba(99,102,241,0.7),0 0 50px rgba(99,102,241,0.3)} }
+    .header-title h1 { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; color: var(--text-bright); }
+    .header-title p { font-size: 0.72rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; }
+    .header-right { display: flex; align-items: center; gap: 0.75rem; }
+    .status-badge {
+      display: flex; align-items: center; gap: 0.4rem;
+      background: rgba(34,211,126,0.08); border: 1px solid rgba(34,211,126,0.2);
+      padding: 0.25rem 0.65rem; border-radius: 99px; font-size: 0.72rem; color: #22d37e;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #22d37e; box-shadow: 0 0 8px #22d37e; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+    .header-btn {
+      background: var(--bg-elevated); border: 1px solid var(--border-strong);
+      color: var(--text-secondary); border-radius: var(--radius-xs);
+      padding: 0.35rem 0.75rem; font-size: 0.75rem; cursor: pointer;
+      transition: all 0.2s; font-family: inherit; display: flex; align-items: center; gap: 0.35rem;
+    }
+    .header-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--accent); }
+    .header-btn svg { width: 14px; height: 14px; }
+
+    /* LAYOUT */
+    .layout { position: relative; z-index: 1; flex: 1; display: flex; overflow: hidden; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 260px; flex-shrink: 0;
+      background: var(--glass); backdrop-filter: blur(20px);
+      border-right: 1px solid var(--glass-border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    @media(max-width: 768px) { .sidebar { display: none; } }
+    .sidebar-section { padding: 1rem 1.1rem; border-bottom: 1px solid var(--border); }
+    .sidebar-title {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 0.8rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .sidebar-title svg { width: 12px; height: 12px; opacity: 0.6; }
+
+    /* ANALYTICS CARDS */
+    .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .analytics-card {
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: var(--radius-xs); padding: 0.6rem 0.7rem;
+      transition: all 0.2s;
+    }
+    .analytics-card:hover { border-color: var(--border-strong); }
+    .analytics-card .label { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .analytics-card .value { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    .analytics-card .value.accent { color: var(--accent); }
+    .analytics-card .value.cyan { color: var(--accent-3); }
+
+    /* INTENT DISTRIBUTION */
+    .intent-bars { display: flex; flex-direction: column; gap: 0.45rem; }
+    .intent-bar-row { display: flex; align-items: center; gap: 0.6rem; }
+    .intent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .intent-dot.code { background: var(--intent-code); box-shadow: 0 0 6px var(--intent-code-glow); }
+    .intent-dot.data { background: var(--intent-data); box-shadow: 0 0 6px var(--intent-data-glow); }
+    .intent-dot.writing { background: var(--intent-writing); box-shadow: 0 0 6px var(--intent-writing-glow); }
+    .intent-dot.career { background: var(--intent-career); box-shadow: 0 0 6px var(--intent-career-glow); }
+    .intent-dot.unclear { background: var(--intent-unclear); }
+    .intent-bar-label { font-size: 0.78rem; color: var(--text-secondary); flex: 1; }
+    .intent-bar-track { width: 60px; height: 4px; background: var(--bg-base); border-radius: 99px; overflow: hidden; }
+    .intent-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s cubic-bezier(0.16,1,0.3,1); }
+    .intent-bar-fill.code { background: var(--intent-code); }
+    .intent-bar-fill.data { background: var(--intent-data); }
+    .intent-bar-fill.writing { background: var(--intent-writing); }
+    .intent-bar-fill.career { background: var(--intent-career); }
+    .intent-bar-fill.unclear { background: var(--intent-unclear); }
+    .intent-bar-count { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; min-width: 18px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* QUICK EXAMPLES */
+    .examples-scroll { flex: 1; overflow-y: auto; }
+    .examples-scroll::-webkit-scrollbar { width: 3px; }
+    .examples-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
+    .example-btn {
+      width: 100%; background: var(--bg-elevated); border: 1px solid var(--border);
+      color: var(--text-secondary); border-radius: var(--radius-xs);
+      padding: 0.55rem 0.7rem; font-size: 0.76rem; text-align: left;
+      cursor: pointer; line-height: 1.45; transition: all 0.2s;
+      font-family: inherit; margin-bottom: 0.35rem; display: block;
+    }
+    .example-btn:hover { background: var(--bg-hover); border-color: var(--accent); color: var(--text-primary); transform: translateX(2px); }
+    .example-tag {
+      display: inline-block; font-size: 0.6rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; opacity: 0.85;
+    }
+
+    /* MAIN AREA */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+    /* CHAT THREAD */
+    .chat-thread { flex: 1; overflow-y: auto; padding: 1.5rem 2rem; scroll-behavior: smooth; }
+    .chat-thread::-webkit-scrollbar { width: 4px; }
+    .chat-thread::-webkit-scrollbar-track { background: transparent; }
+    .chat-thread::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
+
+    /* EMPTY STATE */
+    .empty-state {
+      height: 100%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center;
+      gap: 0.75rem; color: var(--text-muted); padding: 2rem;
+    }
+    .empty-logo {
+      width: 80px; height: 80px; border-radius: 24px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1));
+      border: 1px solid rgba(99,102,241,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; margin-bottom: 0.5rem;
+      box-shadow: 0 0 40px rgba(99,102,241,0.15);
+    }
+    .empty-state h2 { font-size: 1.3rem; color: var(--text-primary); font-weight: 700; }
+    .empty-state p { font-size: 0.88rem; max-width: 400px; line-height: 1.65; color: var(--text-secondary); }
+    .persona-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; margin-top: 1rem; }
+    .persona-chip {
+      background: var(--bg-elevated); border: 1px solid var(--border-strong);
+      border-radius: 99px; padding: 0.35rem 0.85rem; font-size: 0.78rem;
+      color: var(--text-secondary); transition: all 0.2s;
+    }
+    .persona-chip:hover { border-color: var(--accent); color: var(--text-primary); }
+    .pipeline-visual {
+      display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .pipeline-step {
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: var(--radius-xs); padding: 0.4rem 0.8rem;
+      font-size: 0.72rem; color: var(--text-secondary); white-space: nowrap;
+    }
+    .pipeline-arrow { color: var(--accent); font-size: 0.8rem; }
+
+    /* MESSAGES */
+    .message-group { margin-bottom: 1.75rem; animation: fadeUp 0.35s cubic-bezier(0.16,1,0.3,1); }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    .user-bubble { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+    .user-bubble-inner {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff; border-radius: 20px 20px 4px 20px;
+      padding: 0.75rem 1.15rem; max-width: 65%; font-size: 0.9rem; line-height: 1.55;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.35), 0 0 0 1px rgba(99,102,241,0.15);
+      word-break: break-word; white-space: pre-wrap;
+    }
+    .intent-meta {
+      display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .intent-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.25rem 0.7rem; border-radius: 99px; font-size: 0.72rem;
+      font-weight: 700; letter-spacing: 0.03em; border: 1px solid;
+      text-transform: uppercase;
+    }
+    .intent-badge.code { background: var(--intent-code-bg); color: var(--intent-code); border-color: rgba(34,211,126,0.3); }
+    .intent-badge.data { background: var(--intent-data-bg); color: var(--intent-data); border-color: rgba(59,141,246,0.3); }
+    .intent-badge.writing { background: var(--intent-writing-bg); color: var(--intent-writing); border-color: rgba(245,166,35,0.3); }
+    .intent-badge.career { background: var(--intent-career-bg); color: var(--intent-career); border-color: rgba(168,85,247,0.3); }
+    .intent-badge.unclear { background: var(--intent-unclear-bg); color: var(--intent-unclear); border-color: rgba(100,116,139,0.3); }
+
+    .confidence-meter { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--text-secondary); }
+    .conf-track { width: 52px; height: 5px; background: var(--bg-base); border-radius: 99px; overflow: hidden; }
+    .conf-fill { height: 100%; border-radius: 99px; transition: width 0.5s cubic-bezier(0.16,1,0.3,1); }
+    .conf-fill.high { background: linear-gradient(90deg, #22d37e, #06d6a0); }
+    .conf-fill.medium { background: linear-gradient(90deg, #f5a623, #f59e0b); }
+    .conf-fill.low { background: linear-gradient(90deg, #ef4444, #f87171); }
+    .persona-tag { font-size: 0.72rem; color: var(--text-muted); }
+    .response-time-tag { font-size: 0.68rem; color: var(--text-muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+
+    /* RESPONSE CARD */
+    .response-card {
+      background: var(--bg-card); backdrop-filter: blur(12px);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px 20px 20px 20px; padding: 1.1rem 1.4rem;
+      font-size: 0.88rem; line-height: 1.8; max-width: 82%; position: relative;
+      box-shadow: var(--shadow-lg);
+    }
+    .response-card .glow-line {
+      position: absolute; top: 0; left: 12px; right: 12px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.4;
+    }
+    .copy-btn {
+      position: absolute; top: 0.7rem; right: 0.7rem;
+      background: var(--bg-surface); border: 1px solid var(--border-strong);
+      color: var(--text-muted); border-radius: 6px; padding: 0.2rem 0.55rem;
+      font-size: 0.68rem; cursor: pointer; opacity: 0; transition: all 0.2s;
+      font-family: inherit;
+    }
+    .response-card:hover .copy-btn { opacity: 1; }
+    .copy-btn:hover { color: var(--text-primary); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--intent-code) !important; border-color: var(--intent-code) !important; }
+
+    .response-card h1, .response-card h2, .response-card h3 { font-size: 0.95rem; margin: 0.85rem 0 0.4rem; color: var(--text-bright); font-weight: 650; }
+    .response-card p { margin: 0.45rem 0; }
+    .response-card ul, .response-card ol { padding-left: 1.3rem; margin: 0.45rem 0; }
+    .response-card li { margin: 0.25rem 0; }
+    .response-card code {
+      background: var(--code-bg); padding: 0.15em 0.45em; border-radius: 5px;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.82em; color: #c4d3f0; border: 1px solid var(--border);
+    }
+    .response-card pre {
+      background: var(--code-bg); border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm); padding: 1rem 1.15rem; overflow-x: auto; margin: 0.7rem 0;
+      position: relative;
+    }
+    .response-card pre code { background: none; padding: 0; font-size: 0.82rem; border: none; color: #c4d3f0; }
+    .response-card strong { color: var(--text-bright); }
+    .response-card blockquote {
+      border-left: 3px solid var(--accent); padding-left: 0.85rem;
+      color: var(--text-secondary); margin: 0.6rem 0; font-style: italic;
+    }
+    .response-card a { color: #60a5fa; text-decoration: none; }
+    .response-card a:hover { text-decoration: underline; }
+    .response-card table { border-collapse: collapse; width: 100%; margin: 0.6rem 0; font-size: 0.83rem; }
+    .response-card th, .response-card td { border: 1px solid var(--border-strong); padding: 0.4rem 0.65rem; text-align: left; }
+    .response-card th { background: var(--bg-base); color: var(--text-secondary); font-weight: 600; }
+
+    /* TYPING INDICATOR */
+    .typing-indicator {
+      display: flex; gap: 5px; align-items: center;
+      padding: 1rem 1.4rem; background: var(--bg-card);
+      border: 1px solid var(--border-strong); border-radius: 4px 20px 20px 20px;
+      width: fit-content; box-shadow: var(--shadow-lg);
+    }
+    .typing-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+      animation: typingBounce 1.4s infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);opacity:0.3}30%{transform:translateY(-6px);opacity:1} }
+
+    .msg-time { font-size: 0.66rem; color: var(--text-muted); margin-top: 0.3rem; }
+    .msg-time.right { text-align: right; }
+
+    .error-card {
+      background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: var(--radius-sm); padding: 0.85rem 1.1rem;
+      color: #fca5a5; font-size: 0.85rem; max-width: 80%;
+    }
+
+    /* INPUT ZONE */
+    .input-zone {
+      position: relative; z-index: 5; flex-shrink: 0;
+      padding: 1rem 2rem 1.25rem;
+      background: var(--glass); backdrop-filter: blur(20px);
+      border-top: 1px solid var(--glass-border);
+    }
+    .input-wrapper {
+      background: var(--bg-input); border: 1.5px solid var(--border-strong);
+      border-radius: var(--radius); padding: 0.8rem 1rem 0.55rem;
+      display: flex; flex-direction: column; gap: 0.4rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.2);
+    }
+    .input-wrapper:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow), 0 -4px 24px rgba(0,0,0,0.2);
+    }
+    textarea#msgInput {
+      background: transparent; color: var(--text-primary); border: none; outline: none;
+      font-size: 0.9rem; line-height: 1.55; resize: none; font-family: inherit;
+      min-height: 24px; max-height: 150px; overflow-y: auto; width: 100%;
+    }
+    textarea#msgInput::placeholder { color: var(--text-muted); }
+    .input-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+    .input-hints { font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .input-hints kbd {
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 4px; padding: 0.05rem 0.35rem; font-size: 0.66rem; font-family: inherit;
+    }
+    .input-actions { display: flex; gap: 0.5rem; }
+    .btn-clear {
+      background: transparent; border: 1px solid var(--border-strong);
+      color: var(--text-muted); border-radius: var(--radius-xs);
+      padding: 0.4rem 0.75rem; font-size: 0.78rem; cursor: pointer;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .btn-clear:hover { border-color: #ef4444; color: #ef4444; }
+    .btn-send {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: none; color: #fff; border-radius: var(--radius-xs);
+      padding: 0.45rem 1.2rem; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 0.4rem;
+      transition: all 0.2s; font-family: inherit;
+      box-shadow: 0 2px 12px rgba(99,102,241,0.4);
+    }
+    .btn-send:hover:not(:disabled) {
+      box-shadow: 0 4px 20px rgba(99,102,241,0.55); transform: translateY(-1px);
+    }
+    .btn-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-send svg { width: 14px; height: 14px; }
+    .spinner-ring {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.25); border-top-color: #fff;
+      border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* HISTORY OVERLAY */
+    .history-overlay {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+    }
+    .history-overlay.open { display: block; }
+    .history-panel {
+      position: fixed; top: 0; right: 0; width: min(440px, 100vw); height: 100vh;
+      background: var(--bg-surface); border-left: 1px solid var(--border-strong);
+      display: flex; flex-direction: column; z-index: 101;
+      transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+      box-shadow: -8px 0 32px rgba(0,0,0,0.5);
+    }
+    .history-overlay.open .history-panel { transform: translateX(0); }
+    .history-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .history-header h2 { font-size: 0.95rem; font-weight: 700; }
+    .btn-close {
+      background: var(--bg-elevated); border: 1px solid var(--border-strong);
+      color: var(--text-secondary); border-radius: 6px; padding: 0.3rem 0.65rem;
+      font-size: 0.8rem; cursor: pointer; font-family: inherit;
+    }
+    .history-list { flex: 1; overflow-y: auto; padding: 0.75rem; }
+    .history-item {
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: var(--radius-xs); padding: 0.75rem; margin-bottom: 0.5rem;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .history-item:hover { border-color: var(--accent); transform: translateX(-2px); }
+    .history-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; }
+    .history-msg { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-time { font-size: 0.68rem; color: var(--text-muted); flex-shrink: 0; margin-left: 0.5rem; }
+    .history-empty { text-align: center; color: var(--text-muted); padding: 2rem; font-size: 0.85rem; }
+
+    /* RESPONSIVE */
+    @media(max-width: 768px) {
+      .chat-thread { padding: 1rem; }
+      .input-zone { padding: 0.75rem 1rem; }
+      .user-bubble-inner { max-width: 85%; }
+      .response-card { max-width: 95%; }
+      .input-hints { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-animation">
+    <div class="bg-orb"></div>
+    <div class="bg-orb"></div>
+    <div class="bg-orb"></div>
+  </div>
+  <div class="grid-overlay"></div>
+
+  <header>
+    <div class="header-left">
+      <div class="logo-icon">🧭</div>
+      <div class="header-title">
+        <h1>LLM Intent Router</h1>
+        <p>AI-Powered Prompt Classification & Routing</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-badge"><div class="status-dot"></div> Online</div>
+      <button class="header-btn" onclick="toggleHistory()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+        History
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <!-- Analytics Section -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          Analytics
+        </div>
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <div class="label">Requests</div>
+            <div class="value accent" id="stat-total">0</div>
+          </div>
+          <div class="analytics-card">
+            <div class="label">Avg Speed</div>
+            <div class="value cyan" id="stat-speed">0ms</div>
+          </div>
+        </div>
+        <div class="intent-bars">
+          <div class="intent-bar-row"><div class="intent-dot code"></div><span class="intent-bar-label">Code</span><div class="intent-bar-track"><div class="intent-bar-fill code" id="bar-code" style="width:0%"></div></div><span class="intent-bar-count" id="cnt-code">0</span></div>
+          <div class="intent-bar-row"><div class="intent-dot data"></div><span class="intent-bar-label">Data</span><div class="intent-bar-track"><div class="intent-bar-fill data" id="bar-data" style="width:0%"></div></div><span class="intent-bar-count" id="cnt-data">0</span></div>
+          <div class="intent-bar-row"><div class="intent-dot writing"></div><span class="intent-bar-label">Writing</span><div class="intent-bar-track"><div class="intent-bar-fill writing" id="bar-writing" style="width:0%"></div></div><span class="intent-bar-count" id="cnt-writing">0</span></div>
+          <div class="intent-bar-row"><div class="intent-dot career"></div><span class="intent-bar-label">Career</span><div class="intent-bar-track"><div class="intent-bar-fill career" id="bar-career" style="width:0%"></div></div><span class="intent-bar-count" id="cnt-career">0</span></div>
+          <div class="intent-bar-row"><div class="intent-dot unclear"></div><span class="intent-bar-label">Unclear</span><div class="intent-bar-track"><div class="intent-bar-fill unclear" id="bar-unclear" style="width:0%"></div></div><span class="intent-bar-count" id="cnt-unclear">0</span></div>
+        </div>
+      </div>
+
+      <!-- Quick Examples -->
+      <div class="sidebar-section examples-scroll" style="flex:1;overflow-y:auto;">
+        <div class="sidebar-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Quick Examples
+        </div>
+        <button class="example-btn" onclick="injectExample('how do i sort a list of objects in python?')"><div class="example-tag" style="color:var(--intent-code)">&#x1f9d1;&#x200d;&#x1f4bb; Code</div>Sort list of objects in Python</button>
+        <button class="example-btn" onclick="injectExample('fxi thsi bug pls: for i in range(10) print(i)')"><div class="example-tag" style="color:var(--intent-code)">&#x1f9d1;&#x200d;&#x1f4bb; Code</div>Fix bug (with typos)</button>
+        <button class="example-btn" onclick="injectExample('write a React component that fetches data')"><div class="example-tag" style="color:var(--intent-code)">&#x1f9d1;&#x200d;&#x1f4bb; Code</div>Write React component</button>
+        <button class="example-btn" onclick="injectExample('what is the average of: 12, 45, 23, 67, 34')"><div class="example-tag" style="color:var(--intent-data)">&#x1f4ca; Data</div>Calculate average</button>
+        <button class="example-btn" onclick="injectExample('explain what a pivot table is')"><div class="example-tag" style="color:var(--intent-data)">&#x1f4ca; Data</div>What is a pivot table?</button>
+        <button class="example-btn" onclick="injectExample('This paragraph sounds awkward, can you help?')"><div class="example-tag" style="color:var(--intent-writing)">&#x270d;&#xfe0f; Writing</div>Fix awkward paragraph</button>
+        <button class="example-btn" onclick="injectExample('My boss says my writing is too verbose.')"><div class="example-tag" style="color:var(--intent-writing)">&#x270d;&#xfe0f; Writing</div>Writing too verbose</button>
+        <button class="example-btn" onclick="injectExample('I am preparing for a job interview, any tips?')"><div class="example-tag" style="color:var(--intent-career)">&#x1f4bc; Career</div>Job interview tips</button>
+        <button class="example-btn" onclick="injectExample('How do I structure a cover letter?')"><div class="example-tag" style="color:var(--intent-career)">&#x1f4bc; Career</div>Structure a cover letter</button>
+        <button class="example-btn" onclick="injectExample('hey')"><div class="example-tag" style="color:var(--intent-unclear)">&#x1f914; Unclear</div>Short/ambiguous message</button>
+        <button class="example-btn" onclick="injectExample('@code Fix this JavaScript bug: const x = null; x.toString()')"><div class="example-tag" style="color:var(--accent)">&#x26a1; Override</div>Manual @code override</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="chat-thread" id="chatThread">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-logo">🧭</div>
+          <h2>LLM Intent Router</h2>
+          <p>Send a message and the AI will classify your intent, route it to a specialized expert persona, and generate a tailored response.</p>
+          <div class="persona-chips">
+            <span class="persona-chip">&#x1f9d1;&#x200d;&#x1f4bb; Code Expert</span>
+            <span class="persona-chip">&#x1f4ca; Data Analyst</span>
+            <span class="persona-chip">&#x270d;&#xfe0f; Writing Coach</span>
+            <span class="persona-chip">&#x1f4bc; Career Advisor</span>
+            <span class="persona-chip">&#x1f914; Clarifier</span>
+          </div>
+          <div class="pipeline-visual">
+            <span class="pipeline-step">&#x1f4e8; Your Message</span>
+            <span class="pipeline-arrow">&#x2192;</span>
+            <span class="pipeline-step">&#x1f916; Classifier LLM</span>
+            <span class="pipeline-arrow">&#x2192;</span>
+            <span class="pipeline-step">&#x1f3af; Intent + Confidence</span>
+            <span class="pipeline-arrow">&#x2192;</span>
+            <span class="pipeline-step">&#x1f9d1;&#x200d;&#x1f4bb; Expert Persona</span>
+            <span class="pipeline-arrow">&#x2192;</span>
+            <span class="pipeline-step">&#x2728; Response</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-zone">
+        <div class="input-wrapper">
+          <textarea id="msgInput" rows="1" placeholder="Ask anything &#x2014; code, data, writing, career advice..." oninput="autoResize(this)"></textarea>
+          <div class="input-footer">
+            <div class="input-hints">
+              <span><kbd>Enter</kbd> send</span>
+              <span><kbd>Shift+Enter</kbd> new line</span>
+              <span>Prefix <kbd>@code</kbd> <kbd>@data</kbd> <kbd>@writing</kbd> <kbd>@career</kbd> to override</span>
+            </div>
+            <div class="input-actions">
+              <button class="btn-clear" onclick="clearChat()">Clear</button>
+              <button class="btn-send" id="sendBtn" onclick="sendMessage()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- History Panel -->
+  <div class="history-overlay" id="historyOverlay" onclick="handleOverlayClick(event)">
+    <div class="history-panel">
+      <div class="history-header">
+        <h2>&#x1f4cb; Request History</h2>
+        <button class="btn-close" onclick="toggleHistory()">&#x2715; Close</button>
+      </div>
+      <div class="history-list" id="historyList"><div class="history-empty">Loading...</div></div>
+    </div>
+  </div>
+
+  <script>
+    const EMOJIS = { code:'\u{1F9D1}\u200D\u{1F4BB}', data:'\u{1F4CA}', writing:'\u270D\uFE0F', career:'\u{1F4BC}', unclear:'\u{1F914}' };
+    const LABELS = { code:'Code Expert', data:'Data Analyst', writing:'Writing Coach', career:'Career Advisor', unclear:'Clarifier' };
+    const stats = { code:0, data:0, writing:0, career:0, unclear:0 };
+    let totalRequests = 0, totalResponseTime = 0;
+    let isLoading = false, typingEl = null;
+    const chatThread = document.getElementById('chatThread');
+    const msgInput = document.getElementById('msgInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+    }
+    msgInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    function injectExample(t) { msgInput.value = t; autoResize(msgInput); msgInput.focus(); }
+    function nowStr() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+    function confTier(c) { return c >= 0.8 ? 'high' : c >= 0.5 ? 'medium' : 'low'; }
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function scrollBottom() { chatThread.scrollTop = chatThread.scrollHeight; }
+
+    function updateStats(intent, responseTime) {
+      if (stats[intent] !== undefined) stats[intent]++;
+      totalRequests++;
+      if (responseTime) totalResponseTime += responseTime;
+      const total = Object.values(stats).reduce((a, b) => a + b, 0);
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-speed').textContent = totalRequests > 0
+        ? Math.round(totalResponseTime / totalRequests) + 'ms'
+        : '0ms';
+      const max = Math.max(...Object.values(stats), 1);
+      ['code','data','writing','career','unclear'].forEach(k => {
+        document.getElementById('cnt-' + k).textContent = stats[k];
+        document.getElementById('bar-' + k).style.width = (stats[k] / max * 100) + '%';
+      });
+    }
+
+    function appendUserMessage(text) {
+      document.getElementById('emptyState')?.remove();
+      const div = document.createElement('div');
+      div.className = 'message-group';
+      div.innerHTML = `
+        <div class="user-bubble"><div class="user-bubble-inner">${esc(text)}</div></div>
+        <div class="msg-time right">${nowStr()}</div>`;
+      chatThread.appendChild(div);
+      scrollBottom();
+    }
+
+    function showTyping() {
+      typingEl = document.createElement('div');
+      typingEl.className = 'message-group';
+      typingEl.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+      chatThread.appendChild(typingEl);
+      scrollBottom();
+    }
+    function removeTyping() { if (typingEl) { typingEl.remove(); typingEl = null; } }
+
+    function appendAssistantMessage(data) {
+      const pct = Math.round(data.confidence * 100);
+      const tier = confTier(data.confidence);
+      const html = typeof marked !== 'undefined' ? marked.parse(data.response) : esc(data.response).replace(/\n/g, '<br>');
+      const rtLabel = data.responseTime ? `<span class="response-time-tag">${data.responseTime}ms</span>` : '';
+
+      const div = document.createElement('div');
+      div.className = 'message-group';
+      div.innerHTML = `
+        <div class="assistant-bubble">
+          <div class="intent-meta">
+            <span class="intent-badge ${data.intent}">${EMOJIS[data.intent] || '\u{1F914}'} ${data.intent.toUpperCase()}</span>
+            <div class="confidence-meter">
+              <div class="conf-track"><div class="conf-fill ${tier}" style="width:${pct}%"></div></div>
+              <span>${pct}%</span>
+            </div>
+            <span class="persona-tag">${data.emoji || ''} ${data.persona || LABELS[data.intent]}</span>
+            ${rtLabel}
+          </div>
+          <div class="response-card">
+            <div class="glow-line"></div>
+            <button class="copy-btn" onclick="copyResp(this)">Copy</button>
+            <div class="md-body">${html}</div>
+          </div>
+        </div>
+        <div class="msg-time">${nowStr()}</div>`;
+      div.querySelector('.copy-btn').dataset.text = data.response;
+      chatThread.appendChild(div);
+      updateStats(data.intent, data.responseTime);
+      scrollBottom();
+    }
+
+    function appendErrorMessage(msg) {
+      const div = document.createElement('div');
+      div.className = 'message-group';
+      div.innerHTML = `<div class="error-card">\u26A0\uFE0F ${esc(msg)}</div>`;
+      chatThread.appendChild(div);
+      scrollBottom();
+    }
+
+    async function copyResp(btn) {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.text);
+        btn.textContent = '\u2713 Copied';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+      } catch { btn.textContent = 'Failed'; }
+    }
+
+    async function sendMessage() {
+      const text = msgInput.value.trim();
+      if (!text || isLoading) return;
+      isLoading = true;
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<div class="spinner-ring"></div> Routing...';
+      msgInput.value = '';
+      autoResize(msgInput);
+      appendUserMessage(text);
+      showTyping();
+      try {
+        const res = await fetch('/api/route', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        });
+        removeTyping();
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({ error: 'HTTP ' + res.status }));
+          appendErrorMessage(e.error || 'Request failed');
+        } else {
+          appendAssistantMessage(await res.json());
+        }
+      } catch (err) {
+        removeTyping();
+        appendErrorMessage('Network error \u2014 ' + err.message);
+      } finally {
+        isLoading = false;
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send';
+        msgInput.focus();
+      }
+    }
+
+    function clearChat() {
+      chatThread.innerHTML = '';
+      const es = document.createElement('div');
+      es.className = 'empty-state';
+      es.id = 'emptyState';
+      es.innerHTML = `
+        <div class="empty-logo">\u{1F9ED}</div>
+        <h2>LLM Intent Router</h2>
+        <p>Send a message and the AI will classify your intent, route it to a specialized expert persona, and generate a tailored response.</p>
+        <div class="persona-chips">
+          <span class="persona-chip">\u{1F9D1}\u200D\u{1F4BB} Code Expert</span>
+          <span class="persona-chip">\u{1F4CA} Data Analyst</span>
+          <span class="persona-chip">\u270D\uFE0F Writing Coach</span>
+          <span class="persona-chip">\u{1F4BC} Career Advisor</span>
+          <span class="persona-chip">\u{1F914} Clarifier</span>
+        </div>`;
+      chatThread.appendChild(es);
+      Object.keys(stats).forEach(k => { stats[k] = 0; });
+      totalRequests = 0;
+      totalResponseTime = 0;
+      document.getElementById('stat-total').textContent = '0';
+      document.getElementById('stat-speed').textContent = '0ms';
+      ['code','data','writing','career','unclear'].forEach(k => {
+        document.getElementById('cnt-' + k).textContent = '0';
+        document.getElementById('bar-' + k).style.width = '0%';
+      });
+    }
+
+    async function toggleHistory() {
+      const ov = document.getElementById('historyOverlay');
+      const open = ov.classList.toggle('open');
+      if (open) await loadHistory();
+    }
+    function handleOverlayClick(e) {
+      if (e.target === document.getElementById('historyOverlay')) toggleHistory();
+    }
+
+    async function loadHistory() {
+      const list = document.getElementById('historyList');
+      list.innerHTML = '<div class="history-empty">Loading...</div>';
+      try {
+        const res = await fetch('/api/history');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const { entries } = await res.json();
+        if (!entries || entries.length === 0) {
+          list.innerHTML = '<div class="history-empty">No log entries yet.</div>';
+          return;
+        }
+        list.innerHTML = '';
+        [...entries].reverse().slice(0, 50).forEach(e => {
+          const item = document.createElement('div');
+          item.className = 'history-item';
+          const t = new Date(e.timestamp);
+          const ts = t.toLocaleDateString() + ' ' + t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          item.innerHTML = `
+            <div class="history-item-top">
+              <span class="intent-badge ${e.intent}" style="font-size:0.65rem;padding:0.15rem 0.5rem;">${EMOJIS[e.intent] || '\u{1F914}'} ${e.intent}</span>
+              <span class="history-time">${ts}</span>
+            </div>
+            <div class="history-msg">${esc(e.user_message)}</div>`;
+          item.onclick = () => { injectExample(e.user_message); toggleHistory(); };
+          list.appendChild(item);
+        });
+      } catch (err) {
+        list.innerHTML = `<div class="history-empty">Could not load history: ${err.message}</div>`;
+      }
+    }
+  </script>
+</body>
+</html>
