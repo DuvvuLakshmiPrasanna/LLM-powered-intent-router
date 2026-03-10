@@ -1,0 +1,25 @@
+{
+  "name": "llm-powered-intent-router",
+  "version": "1.0.0",
+  "description": "An LLM-powered prompt router that classifies user intent and routes to specialized AI personas",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "cli": "node src/cli.js",
+    "test": "node src/test.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": [
+    "llm",
+    "prompt-routing",
+    "intent-classification",
+    "openai"
+  ],
+  "author": "Lakshmi Prasanna Duvvu",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.21.1",
+    "openai": "^4.104.0"
+  }
+}
