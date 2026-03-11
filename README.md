@@ -4,7 +4,7 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/Express-4.x-000000?logo=express)](https://expressjs.com)
-[![Gemini](https://img.shields.io/badge/LLM-Google%20Gemini-4285F4?logo=google&logoColor=white)](https://aistudio.google.com)
+[![Groq](https://img.shields.io/badge/LLM-Groq-F55036?logo=groq&logoColor=white)](https://console.groq.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
 
 ---
@@ -13,10 +13,10 @@
 
 This project implements an **LLM-powered prompt router** that detects the intent of a user's message and routes it to specialized AI personas such as a **Code Expert**, **Data Analyst**, **Writing Coach**, or **Career Advisor**.
 
-The system uses a **two-step LLM workflow**:
+The system uses a **two-step LLM workflow** powered by **[Groq](https://console.groq.com)** (ultra-fast inference):
 
-1. **Intent Classification** — A lightweight LLM call (temperature=0) classifies the user's message into one of 5 intent categories with a confidence score.
-2. **Response Generation** — The classified intent routes the message to a specialized expert persona prompt (temperature=0.7) that generates a tailored response.
+1. **Intent Classification** — A lightweight LLM call (`llama-3.1-8b-instant`, temperature=0) classifies the user's message into one of 5 intent categories with a confidence score.
+2. **Response Generation** — The classified intent routes the message to a specialized expert persona prompt (`llama-3.3-70b-versatile`, temperature=0.7) that generates a tailored response.
 
 ### Pipeline Architecture
 
@@ -72,7 +72,7 @@ User Message
 ## Prerequisites
 
 - **Node.js** v18+ ([nodejs.org](https://nodejs.org))
-- **API Key** — Free Gemini key from [aistudio.google.com](https://aistudio.google.com/apikey)
+- **API Key** — Free Groq API key from [console.groq.com](https://console.groq.com/keys)
 - **Docker** (optional) — [docker.com](https://www.docker.com/products/docker-desktop)
 
 ---
@@ -101,10 +101,11 @@ cp .env.example .env
 Edit `.env` and add your API key:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 PORT=3000
-CLASSIFIER_MODEL=gemini-2.5-flash
-GENERATION_MODEL=gemini-2.5-flash
+CLASSIFIER_MODEL=llama-3.1-8b-instant
+GENERATION_MODEL=llama-3.3-70b-versatile
+CONFIDENCE_THRESHOLD=0.7
 ```
 
 ### 4. Start the server
@@ -276,7 +277,8 @@ LLM-powered-intent-router/
 │   ├── classifier.js      # Intent classification with retry/backoff
 │   ├── router.js          # Expert persona routing + response generation
 │   ├── logger.js          # JSON Lines logger → route_log.jsonl
-│   ├── geminiClient.js    # Google Gemini AI client singleton
+│   ├── groqClient.js      # Groq AI client singleton
+│   ├── geminiClient.js    # (legacy) Google Gemini AI client
 │   ├── cli.js             # Interactive terminal CLI
 │   ├── test.js            # Full test suite (unit + integration)
 │   ├── prompts.json       # Expert persona system prompts
@@ -314,7 +316,7 @@ Required fields: `intent`, `confidence`, `user_message`, `final_response`
 ## Error Handling
 
 - **Malformed LLM JSON** — Falls back to `{ intent: "unclear", confidence: 0.0 }` (Requirement #6)
-- **Rate Limiting (429)** — Automatic retry with exponential backoff (15s, 30s)
+- **Rate Limiting (429)** — Automatic retry with exponential backoff (15s, 30s) on both Groq classifier and generation calls
 - **Network Failures** — Graceful error messages returned to the client
 - **Invalid Input** — Returns 400 with descriptive error message
 - **Confidence Below Threshold** — Auto-routes to "unclear" persona

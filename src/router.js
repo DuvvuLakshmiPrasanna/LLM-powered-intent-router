@@ -1,4 +1,4 @@
-const { getGeminiModel } = require("./geminiClient");
+const { getGroqClient } = require("./groqClient");
 const { classifyIntent } = require("./classifier");
 const { logRouteDecision } = require("./logger");
 const prompts = require("./prompts.json");
@@ -34,7 +34,7 @@ function detectOverride(message) {
  * @returns {Promise<string>} - The final generated response
  */
 async function routeAndRespond(message, intentData) {
-  const model = getGeminiModel(process.env.GENERATION_MODEL || "gemini-2.5-flash");
+  const groq = getGroqClient();
   let { intent, confidence } = intentData;
 
   // Apply confidence threshold: if below threshold, treat as unclear
@@ -48,13 +48,17 @@ async function routeAndRespond(message, intentData) {
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: message }] }],
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+      const result = await groq.chat.completions.create({
+        model: process.env.GENERATION_MODEL || "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message },
+        ],
+        temperature: 0.7,
+        max_tokens: 1024,
       });
 
-      return (result.response.text() ?? "").trim() ||
+      return (result.choices[0]?.message?.content ?? "").trim() ||
         "I'm sorry, I encountered an error while generating a response. Please try again.";
     } catch (error) {
       const is429 = error.status === 429 || (error.message && error.message.includes("429"));

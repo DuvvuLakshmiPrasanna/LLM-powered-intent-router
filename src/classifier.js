@@ -1,4 +1,4 @@
-const { getGeminiModel } = require("./geminiClient");
+const { getGroqClient } = require("./groqClient");
 
 // Valid intent labels the classifier can return
 const VALID_INTENTS = ["code", "data", "writing", "career", "unclear"];
@@ -61,17 +61,22 @@ function sleep(ms) {
  * @returns {Promise<{intent: string, confidence: number}>}
  */
 async function classifyIntent(message, retries = 3) {
-  const model = getGeminiModel(process.env.CLASSIFIER_MODEL || "gemini-2.5-flash");
+  const groq = getGroqClient();
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: message }] }],
-        systemInstruction: { parts: [{ text: CLASSIFIER_SYSTEM_PROMPT }] },
-        generationConfig: { temperature: 0, maxOutputTokens: 60 },
+      const result = await groq.chat.completions.create({
+        model: process.env.CLASSIFIER_MODEL || "llama-3.1-8b-instant",
+        messages: [
+          { role: "system", content: CLASSIFIER_SYSTEM_PROMPT },
+          { role: "user", content: message },
+        ],
+        temperature: 0,
+        max_tokens: 60,
+        response_format: { type: "json_object" },
       });
 
-      const raw = (result.response.text() ?? "").trim();
+      const raw = (result.choices[0]?.message?.content ?? "").trim();
       if (!raw) return { intent: "unclear", confidence: 0.0 };
       return parseClassifierResponse(raw);
     } catch (error) {
