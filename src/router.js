@@ -1,4 +1,4 @@
-const { getOpenAIClient } = require("./openaiClient");
+const { getGeminiModel } = require("./geminiClient");
 const { classifyIntent } = require("./classifier");
 const { logRouteDecision } = require("./logger");
 const prompts = require("./prompts.json");
@@ -34,7 +34,7 @@ function detectOverride(message) {
  * @returns {Promise<string>} - The final generated response
  */
 async function routeAndRespond(message, intentData) {
-  const client = getOpenAIClient();
+  const model = getGeminiModel(process.env.GENERATION_MODEL || "gemini-2.5-flash");
   let { intent, confidence } = intentData;
 
   // Apply confidence threshold: if below threshold, treat as unclear
@@ -48,17 +48,13 @@ async function routeAndRespond(message, intentData) {
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const response = await client.chat.completions.create({
-        model: process.env.GENERATION_MODEL || "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: message },
-        ],
-        temperature: 0.7,
-        max_tokens: 1024,
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: message }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
       });
 
-      return (response?.choices?.[0]?.message?.content ?? "").trim() ||
+      return (result.response.text() ?? "").trim() ||
         "I'm sorry, I encountered an error while generating a response. Please try again.";
     } catch (error) {
       const is429 = error.status === 429 || (error.message && error.message.includes("429"));

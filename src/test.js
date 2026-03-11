@@ -190,9 +190,9 @@ async function main() {
   // Run parser unit tests first (no API calls needed)
   const parserOk = testParser();
 
-  // Check if OPENAI_API_KEY is set before running integration tests
-  if (!process.env.OPENAI_API_KEY) {
-    console.log("⚠️  OPENAI_API_KEY not set. Skipping integration tests.");
+  // Check if GEMINI_API_KEY is set before running integration tests
+  if (!process.env.GEMINI_API_KEY) {
+    console.log("⚠️  GEMINI_API_KEY not set. Skipping integration tests.");
     console.log("   Set it in .env to run the full test suite.\n");
     process.exit(parserOk ? 0 : 1);
   }

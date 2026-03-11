@@ -13,13 +13,13 @@
     "llm",
     "prompt-routing",
     "intent-classification",
-    "openai"
+    "gemini"
   ],
   "author": "Lakshmi Prasanna Duvvu",
   "license": "MIT",
   "dependencies": {
+    "@google/generative-ai": "^0.24.0",
     "dotenv": "^16.6.1",
-    "express": "^4.21.1",
-    "openai": "^4.104.0"
+    "express": "^4.21.1"
   }
 }

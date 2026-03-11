@@ -4,7 +4,7 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/Express-4.x-000000?logo=express)](https://expressjs.com)
-[![OpenAI](https://img.shields.io/badge/LLM-OpenAI%20%7C%20Gemini-412991?logo=openai)](https://platform.openai.com)
+[![Gemini](https://img.shields.io/badge/LLM-Google%20Gemini-4285F4?logo=google&logoColor=white)](https://aistudio.google.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
 
 ---
@@ -72,7 +72,7 @@ User Message
 ## Prerequisites
 
 - **Node.js** v18+ ([nodejs.org](https://nodejs.org))
-- **API Key** — OpenAI key from [platform.openai.com](https://platform.openai.com) or free Gemini key from [aistudio.google.com](https://aistudio.google.com)
+- **API Key** — Free Gemini key from [aistudio.google.com](https://aistudio.google.com/apikey)
 - **Docker** (optional) — [docker.com](https://www.docker.com/products/docker-desktop)
 
 ---
@@ -101,15 +101,8 @@ cp .env.example .env
 Edit `.env` and add your API key:
 
 ```env
-OPENAI_API_KEY=your_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
 PORT=3000
-```
-
-For Google Gemini (free tier):
-
-```env
-OPENAI_API_KEY=your_gemini_api_key_here
-OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 CLASSIFIER_MODEL=gemini-2.5-flash
 GENERATION_MODEL=gemini-2.5-flash
 ```
@@ -283,7 +276,7 @@ LLM-powered-intent-router/
 │   ├── classifier.js      # Intent classification with retry/backoff
 │   ├── router.js          # Expert persona routing + response generation
 │   ├── logger.js          # JSON Lines logger → route_log.jsonl
-│   ├── openaiClient.js    # OpenAI/Gemini client singleton
+│   ├── geminiClient.js    # Google Gemini AI client singleton
 │   ├── cli.js             # Interactive terminal CLI
 │   ├── test.js            # Full test suite (unit + integration)
 │   ├── prompts.json       # Expert persona system prompts
