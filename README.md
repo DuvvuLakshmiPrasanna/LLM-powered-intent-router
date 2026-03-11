@@ -6,6 +6,15 @@
 [![Express](https://img.shields.io/badge/Express-4.x-000000?logo=express)](https://expressjs.com)
 [![Groq](https://img.shields.io/badge/LLM-Groq-F55036?logo=groq&logoColor=white)](https://console.groq.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Render-46E3B7?logo=render&logoColor=white)](https://llm-powered-intent-router.onrender.com)
+
+---
+
+## 🚀 Live Demo
+
+**[https://llm-powered-intent-router.onrender.com](https://llm-powered-intent-router.onrender.com)**
+
+> 🎬 **[Watch Video Demo](https://drive.google.com/file/d/1IAyVkgUWOyXpktmcFHElLzsVKJvS-GOP/view?usp=sharing)**
 
 ---
 
